@@ -1,7 +1,6 @@
 
 #!/usr/bin/env python3
 from mpl_toolkits.mplot3d import Axes3D # <--- This is important for 3d plotting 
-
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
@@ -51,8 +50,12 @@ def plotMap(goalPoints, obstacles):
 
     ax.scatter(obstacles[:, 3], obstacles[:, 4], obstacles[:, 5], c='red', label='obstacles')
 # Plot obstacles as cylinders
-
-        
+    trajectory = np.loadtxt("trajectory.txt")
+    xs = trajectory[:, 0]
+    ys = trajectory[:, 1]
+    zs = trajectory[:, 2]
+     
+    ax.plot(xs, ys, zs, 'b.-', label="Trajectory")
     ax.legend()
     ax.set_xlim(-10, 10)
     ax.set_ylim(-10, 10)
@@ -61,7 +64,7 @@ def plotMap(goalPoints, obstacles):
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
 
-    ax.view_init(elev=20., azim=-35, roll=0)
+    ax.view_init(elev=10., azim=-35, roll=0)
     plt.show()
 
 if __name__ == '__main__':
