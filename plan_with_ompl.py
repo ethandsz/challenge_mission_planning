@@ -92,10 +92,10 @@ if __name__ == '__main__':
 
     ss.setGoal(goal_states)
 
-    planner = og.RRTstar(ss.getSpaceInformation()).setup()
+    planner = og.PRMstar(ss.getSpaceInformation()).setup()
     ss.setPlanner(planner)
     # Solve within 5 seconds
-    if ss.solve(5.0):
+    if ss.solve(10):
         ss.simplifySolution()  # Optional: Simplify the path
         path = ss.getSolutionPath()
         path.interpolate(1000)  # Generate 100 waypoints
@@ -103,6 +103,7 @@ if __name__ == '__main__':
         f = open("trajectory.txt", "w")
         f.write(path.printAsMatrix())
         f.close()
+        print(path.length())
 
     print('Clean exit')
     exit(0)
