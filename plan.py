@@ -4,39 +4,8 @@ from mpl_toolkits.mplot3d import Axes3D # <--- This is important for 3d plotting
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
-from time import sleep
-import time
-import yaml
+from scenarioHelpers import extractGoalsAndObstacles, read_scenario
 
-
-def extractGoalsAndObstacles(scenario: dict):
-    """
-    Run the mission for a single drone.
-
-    :param drone_interface: DroneInterface object
-    :return: Bool indicating if the mission was successful
-    """
-    print('Run mission')
-    goalPoints = [] 
-    obstacles = []
-    # Go to path facing
-    for vpid, vp in scenario["viewpoint_poses"].items():
-        print(f'Goal {vpid}, with path facing {vp}')
-        goal = [vp["x"], vp["y"], vp["z"]]
-        goalPoints.append(goal)
-
-    for obid, ob in scenario["obstacles"].items():
-        print(f'Obstacle {obid}, {ob}')
-        obstacle = [ob["d"],ob["h"],ob["w"],ob["x"],ob["y"],ob["z"]]
-        obstacles.append(obstacle)
-
-    return goalPoints, obstacles
-
-# Read the YAML scenario file
-def read_scenario(file_path):
-    with open(file_path, 'r') as file:
-        scenario = yaml.safe_load(file)
-    return scenario
 
 def plotMap(goalPoints, obstacles):
 
@@ -63,8 +32,23 @@ def plotMap(goalPoints, obstacles):
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
+# Rotate the axes and update
+    for angle in range(0, 360 + 1):
+        # Normalize the angle to the range [-180, 180] for display
+        angle_norm = (angle + 180) % 360 - 180
 
-    ax.view_init(elev=10., azim=-35, roll=0)
+        # Cycle through a full rotation of elevation, then azimuth, roll, and all
+        elev = azim = roll = 0
+        if angle <= 360:
+            azim = angle_norm
+
+        # Update the axis view and title
+        ax.view_init(elev, azim, roll)
+        plt.title('Elevation: %d°, Azimuth: %d°, Roll: %d°' % (elev, azim, roll))
+
+        plt.draw()
+        plt.pause(.001)
+        # ax.view_init(elev=10., azim=-35, roll=0)
     plt.show()
 
 if __name__ == '__main__':

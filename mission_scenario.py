@@ -39,9 +39,10 @@ from time import sleep
 import time
 import yaml
 
+from OmplPlanner import OmplPlanner
 from as2_python_api.drone_interface import DroneInterface
 import rclpy
-
+from scenarioHelpers import read_scenario
 TAKE_OFF_HEIGHT = 1.0  # Height in meters
 TAKE_OFF_SPEED = 1.0  # Max speed in m/s
 SLEEP_TIME = 0.5  # Sleep time between behaviors in seconds
@@ -85,17 +86,22 @@ def drone_run(drone_interface: DroneInterface, scenario: dict) -> bool:
     """
     print('Run mission')
     
+    
+    planner = OmplPlanner(args.scenario)
+
     # Go to path facing
     for vpid, vp in scenario["viewpoint_poses"].items():
         print(f'Go to {vpid} with path facing {vp}')
         goal = [vp["x"], vp["y"], vp["z"]]
-        success = drone_interface.go_to.go_to_point_with_yaw(goal, angle=vp["w"], speed=SPEED)
+        navPath, _ = planner.solve(drone_interface.position, goal)
+        success = drone_interface.follow_path.follow_path_with_yaw(navPath, speed = 5.0, angle = vp["w"])
+
         print(f'Go to success: {success}')
         if not success:
             return success
         print('Go to done')
         sleep(SLEEP_TIME)
-
+    #
 
 def drone_end(drone_interface: DroneInterface) -> bool:
     """
@@ -119,12 +125,6 @@ def drone_end(drone_interface: DroneInterface) -> bool:
     print(f'Manual success: {success}')
 
     return success
-
-# Read the YAML scenario file
-def read_scenario(file_path):
-    with open(file_path, 'r') as file:
-        scenario = yaml.safe_load(file)
-    return scenario
 
 
 if __name__ == '__main__':
