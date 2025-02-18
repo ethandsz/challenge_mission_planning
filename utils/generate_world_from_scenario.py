@@ -81,6 +81,7 @@ def calculate_marker_pose(viewpoint, marker_distance=1.0):
     x = viewpoint['x'] + marker_distance * math.cos(viewpoint['w'])
     y = viewpoint['y'] + marker_distance * math.sin(viewpoint['w'])
     z = viewpoint['z']  # Assuming marker is at the same height as the viewpoint
+    print(f"X: {x}, Y: {y}, Z: {z}")
     return {'x': x, 'y': y, 'z': z}
 
 # Read the YAML scenario file

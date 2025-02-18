@@ -6,6 +6,7 @@ from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from rclpy.clock import Clock
 from scenarioHelpers import extractGoalsAndObstacles, read_scenario
+import math
 
 class OmplPlanner():
     def __init__(self, scenario_file):
@@ -62,7 +63,7 @@ class OmplPlanner():
 
         return nav_path
 
-    def is_state_valid(self, state, obstacles, goals, margin = 1.0, goal_margin = 1.0):
+    def is_state_valid(self, state, obstacles, goals, margin = 1.0, goal_margin = 0.7):
         x = state.getX()
         y = state.getY()
         z = state.getZ()
@@ -98,38 +99,22 @@ class OmplPlanner():
                 return False
 
         for goal in goals:
-            goal_x = goal[0] + 1
-            goal_y = goal[1]
             goal_z = goal[2]
             goal_w = goal[3]
             
+            goal_x = goal[0] + 1.0 * math.cos(goal_w)
+            goal_y = goal[1] + 1.0 * math.sin(goal_w) 
 
-            # Build the rotation matrix for a rotation about the z-axis by goal_w (radians)
-            R = np.array([
-                [np.cos(goal_w), -np.sin(goal_w), 0],
-                [np.sin(goal_w),  np.cos(goal_w), 0],
-                [0,               0,              1]
-            ])
-
+            
             true_goal = np.array([goal_x, goal_y, goal_z])
-            # print(R)
-            true_goal = np.dot(R, true_goal)
-
-            x_low = true_goal[0] - 0.5
-            x_high = true_goal[0] + 0.5
+            x_low = true_goal[0] - goal_margin
+            x_high = true_goal[0] + goal_margin
             
-            y_low = true_goal[1] - 0.5
-            y_high = true_goal[1] + 0.5
+            y_low = true_goal[1] - goal_margin
+            y_high = true_goal[1] + goal_margin
             
-            z_low = true_goal[2] - 0.5
-            z_high = true_goal[2] + 0.5
-            
-            x_low_inflated = x_low - goal_margin
-            x_high_inflated = x_high + goal_margin
-            y_low_inflated = y_low - goal_margin
-            y_high_inflated = y_high + goal_margin
-            z_low_inflated = z_low - goal_margin
-            z_high_inflated = z_high + goal_margin
+            z_low = true_goal[2] - goal_margin
+            z_high = true_goal[2] + goal_margin
 
             if (x_low <= x <= x_high and
                 y_low <= y <= y_high and
@@ -183,10 +168,10 @@ class OmplPlanner():
         planner = og.RRTstar(ss.getSpaceInformation())
         ss.setPlanner(planner)
         # Solve within 5 seconds
-        if ss.solve(10):
+        if ss.solve(15):
             ss.simplifySolution(10.0)  # Optional: Simplify the path
             path = ss.getSolutionPath()
-            path.interpolate(15)  # Generate 100 waypoints
+            path.interpolate(5)  # Generate 100 waypoints
             navPath = self.path_to_navPath(path)
             return navPath, path.printAsMatrix();
         raise Exception("No path found")
