@@ -63,7 +63,7 @@ class OmplPlanner():
 
         return nav_path
 
-    def is_state_valid(self, state, obstacles, goals, margin = 1.0, goal_margin = 0.7):
+    def is_state_valid(self, state, obstacles, goals, margin = 1.0, goal_margin = 0.55):
         x = state.getX()
         y = state.getY()
         z = state.getZ()
@@ -98,29 +98,24 @@ class OmplPlanner():
                 z_low_inflated <= z <= z_high_inflated):
                 return False
 
+            
+
         for goal in goals:
+            # Extract goal parameters
             goal_z = goal[2]
             goal_w = goal[3]
             
+            # Compute the true goal center after applying an offset along the local x-axis
             goal_x = goal[0] + 1.0 * math.cos(goal_w)
-            goal_y = goal[1] + 1.0 * math.sin(goal_w) 
-
+            goal_y = goal[1] + 1.0 * math.sin(goal_w)
             
             true_goal = np.array([goal_x, goal_y, goal_z])
-            x_low = true_goal[0] - goal_margin
-            x_high = true_goal[0] + goal_margin
+            state_pos = np.array([x, y, z])
             
-            y_low = true_goal[1] - goal_margin
-            y_high = true_goal[1] + goal_margin
-            
-            z_low = true_goal[2] - goal_margin
-            z_high = true_goal[2] + goal_margin
-
-            if (x_low <= x <= x_high and
-                y_low <= y <= y_high and
-                z_low <= z <= z_high):
+            # Use Euclidean distance as a safety radius check
+            distance = np.linalg.norm(state_pos - true_goal)
+            if distance < goal_margin:
                 return False
-            
             
             
         return True
@@ -130,12 +125,12 @@ class OmplPlanner():
         goalPoints, obstacles = extractGoalsAndObstacles(scenario)
         space = ob.SE3StateSpace()
         bounds = ob.RealVectorBounds(3)
-        bounds.setLow(0, -10)
-        bounds.setHigh(0, 10)
-        bounds.setLow(1, -10)
-        bounds.setHigh(1, 10)
+        bounds.setLow(0, -15)
+        bounds.setHigh(0, 15)
+        bounds.setLow(1, -15)
+        bounds.setHigh(1, 15)
         bounds.setLow(2, 0)
-        bounds.setHigh(2, 5)
+        bounds.setHigh(2, 7)
         space.setBounds(bounds)
         ss = og.SimpleSetup(space)
         ss.setStateValidityChecker(ob.StateValidityCheckerFn(
@@ -171,7 +166,7 @@ class OmplPlanner():
         if ss.solve(15):
             ss.simplifySolution(10.0)  # Optional: Simplify the path
             path = ss.getSolutionPath()
-            path.interpolate(5)  # Generate 100 waypoints
+            path.interpolate(10)  # Generate 100 waypoints
             navPath = self.path_to_navPath(path)
             return navPath, path.printAsMatrix();
         raise Exception("No path found")

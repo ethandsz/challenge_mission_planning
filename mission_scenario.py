@@ -38,7 +38,7 @@ import argparse
 from time import sleep
 import time
 import yaml
-
+from mission_camera import DroneMotionRef
 from OmplPlanner import OmplPlanner
 from as2_python_api.drone_interface import DroneInterface
 import rclpy
@@ -154,7 +154,7 @@ if __name__ == '__main__':
 
     print(f"Reading scenario {args.scenario}")
     scenario = read_scenario(args.scenario)
-
+    
     rclpy.init()
 
     uav = DroneInterface(
