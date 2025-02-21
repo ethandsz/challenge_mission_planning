@@ -89,14 +89,14 @@ def read_scenario(file_path):
         scenario = yaml.safe_load(file)
     return scenario
 
-def getStartPose(scenario: dict):
+def get_start_pose(scenario: dict):
     start_pose = list(scenario["drone_start_pose"].values())
     return (start_pose)
 # Write the JSON world configuration
 def write_world_config(scenario, model_type, world_name, output_folder, world_file_name, marker_distance):
     os.makedirs(output_folder, exist_ok=True)
     start_pose = getStartPose(scenario)
-    start_pose[-1] = 0.5
+    start_pose[2] = 0.5
     world_config = {
         "world_name": world_name,
         "origin": {
