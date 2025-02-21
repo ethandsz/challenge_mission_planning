@@ -1,6 +1,6 @@
 drone_start_pose:
-  x: 9.0
-  y: -8.0
+  x: 0.0
+  y: 0.0
   z: 0.0
 name: scenario410
 obstacles:

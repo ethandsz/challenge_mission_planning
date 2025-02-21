@@ -1,5 +1,7 @@
 import numpy as np
 from python_tsp.exact import solve_tsp_dynamic_programming
+from python_tsp.heuristics import solve_tsp_lin_kernighan
+from python_tsp.heuristics import solve_tsp_record_to_record
 class TSPSolver():
     def __init__(self, goalList, planner, startPose):
         goalList.insert(0, startPose)
@@ -23,9 +25,10 @@ class TSPSolver():
             j = 0
             i += 1
         csGraph = csGraph + csGraph.T
-        print(f"CS Graph:\n{csGraph}")
-        permutation, self.distance = solve_tsp_dynamic_programming(csGraph)
-        print(permutation)
+        print(f"CS Graph:\n{csGraph}\n\n\n")
+        print("Solving TSP")
+        permutation, self.distance = solve_tsp_record_to_record(csGraph, max_iterations = 50)
+        print("TSP Solutions: ", permutation)
         self.goalList = [self.goalList[i] for i in permutation]
         self.goalList.append(self.goalList.pop(0))
 

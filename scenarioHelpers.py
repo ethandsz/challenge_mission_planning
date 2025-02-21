@@ -31,7 +31,6 @@ def getStartPose(scenario: dict):
     start_pose = list(scenario["drone_start_pose"].values())
     start_pose[-1] = 1.0 
     start_pose.append(0.0)
-    print(start_pose)
     return (start_pose)
 
 
