@@ -33,22 +33,22 @@
 __authors__ = 'Rafael Perez-Segui'
 __copyright__ = 'Copyright (c) 2024 Universidad Politécnica de Madrid'
 __license__ = 'BSD-3-Clause'
-
+from threading import Thread
 import argparse
 from time import sleep
 import time
 import yaml
+from ShortestPath import TSPSolver
 from mission_camera import DroneMotionRef
 from OmplPlanner import OmplPlanner
 from as2_python_api.drone_interface import DroneInterface
 import rclpy
-from scenarioHelpers import read_scenario
+from scenarioHelpers import extractGoalsAndObstacles, getStartPose, read_scenario
 TAKE_OFF_HEIGHT = 1.0  # Height in meters
 TAKE_OFF_SPEED = 1.0  # Max speed in m/s
-SLEEP_TIME = 0.5  # Sleep time between behaviors in seconds
+SLEEP_TIME = 3.5  # Sleep time between behaviors in seconds
 SPEED = 1.0  # Max speed in m/s
 LAND_SPEED = 0.5  # Max speed in m/s
-
 
 def drone_start(drone_interface: DroneInterface) -> bool:
     """
@@ -77,7 +77,7 @@ def drone_start(drone_interface: DroneInterface) -> bool:
     return success
 
 
-def drone_run(drone_interface: DroneInterface, scenario: dict) -> bool:
+def drone_run(drone_interface: DroneInterface, timing: dict) -> bool:
     """
     Run the mission for a single drone.
 
@@ -86,22 +86,28 @@ def drone_run(drone_interface: DroneInterface, scenario: dict) -> bool:
     """
     print('Run mission')
     
-    
-    planner = OmplPlanner(args.scenario)
-
-    # Go to path facing
-    for vpid, vp in scenario["viewpoint_poses"].items():
-        print(f'Go to {vpid} with path facing {vp}')
-        goal = [vp["x"], vp["y"], vp["z"]]
-        navPath, _ = planner.solve(drone_interface.position, goal)
-        success = drone_interface.follow_path.follow_path_with_yaw(navPath, speed = 5.0, angle = vp["w"])
-
-        print(f'Go to success: {success}')
-        if not success:
-            return success
-        print('Go to done')
-        sleep(SLEEP_TIME)
-    #
+    scenario = read_scenario(args.scenario)
+    goalsPoints, obstacles = extractGoalsAndObstacles(scenario)
+    startPose = getStartPose(scenario) 
+    omplPlanner = OmplPlanner(goalsPoints, obstacles)
+    tspSolver = TSPSolver(omplPlanner.goalPoints,omplPlanner, startPose)
+    tspList = tspSolver.getTSPPath()
+    thread = Thread(target=omplPlanner.solveAll, args=(drone_interface.position, tspList,))
+    thread.start()
+    started = False
+    while not omplPlanner.isTourDone():
+        path = omplPlanner.getNextPath()
+        if path is not None: 
+            if(not started):
+                started = True
+                timing['start_time'] = time.time()
+            success = drone_interface.follow_path.follow_path_with_yaw(path[0], speed = 5.0, angle = path[1])
+            if not success:
+                return success
+            print("Finished a goal")
+            omplPlanner.pathCompleted()
+            sleep(SLEEP_TIME)
+    return True;
 
 def drone_end(drone_interface: DroneInterface) -> bool:
     """
@@ -164,10 +170,10 @@ if __name__ == '__main__':
 
     success = drone_start(uav)
     try:
-        start_time = time.time()
+        timing = {'start_time': None}  # Create a dictionary to store the start_time
         if success:
-            success = drone_run(uav, scenario)
-        duration = time.time() - start_time
+            success = drone_run(uav, timing)
+        duration = time.time() - timing['start_time'] 
         print("---------------------------------")
         print(f"Tour of {args.scenario} took {duration} seconds")
         print("---------------------------------")

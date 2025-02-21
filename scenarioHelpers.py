@@ -8,7 +8,6 @@ def extractGoalsAndObstacles(scenario: dict):
     :param drone_interface: DroneInterface object
     :return: Bool indicating if the mission was successful
     """
-    print('Run mission')
     goalPoints = [] 
     obstacles = []
     # Go to path facing
@@ -27,3 +26,12 @@ def read_scenario(file_path):
     with open(file_path, 'r') as file:
         scenario = yaml.safe_load(file)
     return scenario
+
+def getStartPose(scenario: dict):
+    start_pose = list(scenario["drone_start_pose"].values())
+    start_pose[-1] = 1.0 
+    start_pose.append(0.0)
+    print(start_pose)
+    return (start_pose)
+
+

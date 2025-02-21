@@ -5,19 +5,52 @@ from ompl import geometric as og
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from rclpy.clock import Clock
-from scenarioHelpers import extractGoalsAndObstacles, read_scenario
 import math
+from queue import Queue
 
 class OmplPlanner():
-    def __init__(self, scenario_file):
-        self.scenario_file = scenario_file
+    def __init__(self, goalPoints, obstacles):
         self.nav_path = Path()
         self.ompl_path = None 
-    def getPath(self):
-        if self.nav_path.length == 0:
-            raise ValueError("No Path Defined/Found") 
-        else:
-            return self.nav_path
+        self.obstacleBounds = np.empty((0,6))
+        self.goalPoints, self.obstacles = goalPoints, obstacles
+        
+        self.totalPoints = len(self.goalPoints) + 1
+        self.navPathQueue = Queue(maxsize=self.totalPoints) #add one for back to start
+        print("Total Points to visit: ", self.totalPoints)
+        self.createBoundsAroundGoalsAndObstacles()
+
+    def createBoundsAroundGoalsAndObstacles(self, margin = 0.5):
+        for obstacle in self.obstacles:
+            depth = obstacle[0]
+            height = obstacle[1]
+            width = obstacle[2]
+            obs_x = obstacle[3]
+            obs_y = obstacle[4]
+            obs_z = obstacle[5]
+
+            z_low = obs_z - (height/2)
+            z_high = obs_z + (height/2)
+
+            x_low = obs_x - (width/2)
+            x_high = obs_x + (width/2)
+
+            y_low = obs_y - (depth/2)
+            y_high = obs_y + (depth/2)
+
+            # Inflate the obstacle boundaries by the margin
+            x_low_inflated = x_low - margin
+            x_high_inflated = x_high + margin
+            y_low_inflated = y_low - margin
+            y_high_inflated = y_high + margin
+            z_low_inflated = z_low - margin
+            z_high_inflated = z_high + margin
+         
+            self.obstacleBounds = np.append(
+                self.obstacleBounds,
+                [[x_low_inflated, x_high_inflated, y_low_inflated, y_high_inflated, z_low_inflated, z_high_inflated]],
+                axis=0
+            )
 
     def path_to_navPath(self, path, frame_id="world"):
         """
@@ -63,66 +96,80 @@ class OmplPlanner():
 
         return nav_path
 
-    def is_state_valid(self, state, obstacles, goals, margin = 1.0, goal_margin = 0.55):
+    def is_state_valid(self, state, obstacles, goals, margin = 1.0, goal_margin = 0.50):
         x = state.getX()
         y = state.getY()
         z = state.getZ()
-        for obstacle in obstacles:
-            depth = obstacle[0]
-            height = obstacle[1]
-            width = obstacle[2]
-            obs_x = obstacle[3]
-            obs_y = obstacle[4]
-            obs_z = obstacle[5]
 
-            z_low = obs_z - (height/2)
-            z_high = obs_z + (height/2)
-
-            x_low = obs_x - (width/2)
-            x_high = obs_x + (width/2)
-
-            y_low = obs_y - (depth/2)
-            y_high = obs_y + (depth/2)
-
-            # Inflate the obstacle boundaries by the margin
-            x_low_inflated = x_low - margin
-            x_high_inflated = x_high + margin
-            y_low_inflated = y_low - margin
-            y_high_inflated = y_high + margin
-            z_low_inflated = z_low - margin
-            z_high_inflated = z_high + margin
-
-            # If the state is within the inflated boundaries, it violates the constraint
-            if (x_low_inflated <= x <= x_high_inflated and
-                y_low_inflated <= y <= y_high_inflated and
-                z_low_inflated <= z <= z_high_inflated):
-                return False
-
-            
-
+        inside_any_obstacle = np.any(
+            (self.obstacleBounds[:, 0] <= x) & (x <= self.obstacleBounds[:, 1]) &
+            (self.obstacleBounds[:, 2] <= y) & (y <= self.obstacleBounds[:, 3]) &
+            (self.obstacleBounds[:, 4] <= z) & (z <= self.obstacleBounds[:, 5])
+        )
+        if inside_any_obstacle:
+            return False
+        
         for goal in goals:
-            # Extract goal parameters
-            goal_z = goal[2]
-            goal_w = goal[3]
-            
-            # Compute the true goal center after applying an offset along the local x-axis
-            goal_x = goal[0] + 1.0 * math.cos(goal_w)
-            goal_y = goal[1] + 1.0 * math.sin(goal_w)
-            
-            true_goal = np.array([goal_x, goal_y, goal_z])
-            state_pos = np.array([x, y, z])
-            
-            # Use Euclidean distance as a safety radius check
-            distance = np.linalg.norm(state_pos - true_goal)
-            if distance < goal_margin:
+            goal_x = goal[0] + 1.0 * math.cos(goal[3])
+            goal_y = goal[1] + 1.0 * math.sin(goal[3])
+
+            c_x, c_y, c_z = goal_x, goal_y, goal[2]
+            width, depth, height = 0.8, 0.8, 0.65
+
+            # Compute half-extents
+            half_w = width / 2.0
+            half_d = depth / 2.0
+            half_h = height / 2.0
+
+            # Define the four corners in the obstacle's local (unrotated) frame
+            local_corners = np.array([
+                [ half_w,  half_d],
+                [ half_w, -half_d],
+                [-half_w,  half_d],
+                [-half_w, -half_d]
+            ])
+            yaw = goal[3]
+            # Define the rotation matrix for yaw
+            R = np.array([
+                [np.cos(yaw), -np.sin(yaw)],
+                [np.sin(yaw),  np.cos(yaw)]
+            ])
+
+            # Rotate local corners and shift by the center
+            global_corners = np.dot(local_corners, R.T)
+            global_corners[:, 0] += c_x
+            global_corners[:, 1] += c_y
+
+            # Determine the axis-aligned bounds in x and y
+            x_min = np.min(global_corners[:, 0])
+            x_max = np.max(global_corners[:, 0])
+            y_min = np.min(global_corners[:, 1])
+            y_max = np.max(global_corners[:, 1])
+
+            # For z, rotation doesn't affect the bounds.
+            z_min = c_z - half_h
+            z_max = c_z + half_h
+            if (x_min <= x <= x_max and
+                y_min <= y <= y_max and
+                z_min <= z <= z_max):
                 return False
-            
-            
         return True
 
-    def solve(self, start_position, goal_position):
-        scenario = read_scenario(self.scenario_file)
-        goalPoints, obstacles = extractGoalsAndObstacles(scenario)
+    def solveAll(self, start_position, goalPoints):
+        print(goalPoints)
+        for goal in goalPoints:
+            navpath, _ = self.solve(start_position, goal)
+            self.navPathQueue.put([navpath, goal[3]])
+            start_position = [goal[0], goal[1], goal[2]]
+
+    def getNextPath(self):
+        return self.navPathQueue.get()
+
+    def isTourDone(self):
+        if self.totalPoints == 0:
+            return True
+
+    def solve(self, start_position, goal_position, getPathLength = False, solveTime = 20):
         space = ob.SE3StateSpace()
         bounds = ob.RealVectorBounds(3)
         bounds.setLow(0, -15)
@@ -134,7 +181,7 @@ class OmplPlanner():
         space.setBounds(bounds)
         ss = og.SimpleSetup(space)
         ss.setStateValidityChecker(ob.StateValidityCheckerFn(
-            lambda state: self.is_state_valid(state, obstacles, goalPoints)
+            lambda state: self.is_state_valid(state, self.obstacleBounds, self.goalPoints)
         ))
         start_state = ob.State(space)
 
@@ -142,7 +189,6 @@ class OmplPlanner():
         start_state().setY(start_position[1])
         start_state().setZ(start_position[2])
         start_state().rotation().setIdentity()
-        # ss.setStartState(start_state)
 
         goal_states = ob.GoalStates(ss.getSpaceInformation())
 
@@ -163,13 +209,15 @@ class OmplPlanner():
         planner = og.RRTstar(ss.getSpaceInformation())
         ss.setPlanner(planner)
         # Solve within 5 seconds
-        if ss.solve(15):
+        if ss.solve(solveTime):
             ss.simplifySolution(10.0)  # Optional: Simplify the path
             path = ss.getSolutionPath()
-            path.interpolate(10)  # Generate 100 waypoints
+            path.interpolate(25)  # Generate 100 waypoints
             navPath = self.path_to_navPath(path)
+            if getPathLength:
+                return navPath, path.printAsMatrix(), path.length()
             return navPath, path.printAsMatrix();
         raise Exception("No path found")
 
-
-
+    def pathCompleted(self):
+        self.totalPoints -= 1

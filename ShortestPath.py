@@ -1,0 +1,33 @@
+import numpy as np
+from python_tsp.exact import solve_tsp_dynamic_programming
+class TSPSolver():
+    def __init__(self, goalList, planner, startPose):
+        goalList.insert(0, startPose)
+        self.goalList = goalList
+        self.planner = planner
+        self.distance = None
+        self.__solve()
+    def __solve(self):
+        graphSize = len(self.goalList)
+        csGraph = np.zeros((graphSize,graphSize))
+        i = 0
+        j = 0
+        for goal_i in self.goalList:
+            for goal_j in self.goalList: 
+                if goal_j == goal_i:
+                    csGraph[i,j] = 0
+                    break
+                _, _, length = self.planner.solve(goal_i, goal_j, getPathLength=True, solveTime = 1)
+                csGraph[i, j] = length
+                j += 1
+            j = 0
+            i += 1
+        csGraph = csGraph + csGraph.T
+        print(f"CS Graph:\n{csGraph}")
+        permutation, self.distance = solve_tsp_dynamic_programming(csGraph)
+        print(permutation)
+        self.goalList = [self.goalList[i] for i in permutation]
+        self.goalList.append(self.goalList.pop(0))
+
+    def getTSPPath(self):
+        return self.goalList

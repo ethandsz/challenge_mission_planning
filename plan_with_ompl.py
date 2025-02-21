@@ -3,7 +3,8 @@
 #!/usr/bin/env python3
 import argparse
 from OmplPlanner import OmplPlanner
-from scenarioHelpers import extractGoalsAndObstacles, read_scenario
+from ShortestPath import TSPSolver
+from scenarioHelpers import extractGoalsAndObstacles, getStartPose, read_scenario
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -17,16 +18,18 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     verbosity = args.verbose
-    planner = OmplPlanner(args.scenario)
     scenario = read_scenario(args.scenario)
-    goalPoints, _ = extractGoalsAndObstacles(scenario)
-    start_point = [0,0,1]
+    goalPoints, obstacles = extractGoalsAndObstacles(scenario)
+    startPose = getStartPose(scenario)
+    planner = OmplPlanner(goalPoints, obstacles)
+    tspSolver = TSPSolver(planner.goalPoints, planner, startPose)
+    tspList = tspSolver.getTSPPath()
     f = open("trajectory.txt", "w")
     f.write("")
-    for goal in goalPoints:
+    start_point = getStartPose(scenario)
+    for goal in tspList:
         goalPoint = [goal[0], goal[1], goal[2]]
-        print(f"Going to {goalPoint}")
-        _, path = planner.solve(start_point, goalPoint)
+        _, path = planner.solve(start_point, goalPoint, solveTime=2)
         f = open("trajectory.txt", "a")
         f.write(path)
         f.close()

@@ -4,7 +4,7 @@ from mpl_toolkits.mplot3d import Axes3D # <--- This is important for 3d plotting
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
-from scenarioHelpers import extractGoalsAndObstacles, read_scenario
+from scenarioHelpers import extractGoalsAndObstacles, getStartPose, read_scenario
 
 
 def plotMap(goalPoints, obstacles):
