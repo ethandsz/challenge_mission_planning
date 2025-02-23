@@ -29,7 +29,7 @@ if __name__ == '__main__':
     start_point = getStartPose(scenario)
     for goal in tspList:
         goalPoint = [goal[0], goal[1], goal[2]]
-        _, path = planner.solve(start_point, goalPoint, solveTime=2)
+        _, path = planner.solve(start_point, goalPoint)
         f = open("trajectory.txt", "a")
         f.write(path)
         f.close()

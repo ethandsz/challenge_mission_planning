@@ -173,10 +173,11 @@ if __name__ == '__main__':
         timing = {'start_time': None}  # Create a dictionary to store the start_time
         if success:
             success = drone_run(uav, timing)
-        duration = time.time() - timing['start_time'] 
-        print("---------------------------------")
-        print(f"Tour of {args.scenario} took {duration} seconds")
-        print("---------------------------------")
+        if timing['start_time'] is not None:
+            duration = time.time() - timing['start_time'] 
+            print("---------------------------------")
+            print(f"Tour of {args.scenario} took {duration} seconds")
+            print("---------------------------------")
     except KeyboardInterrupt as e:
         pass
     # sleep(5.0)

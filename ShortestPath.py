@@ -19,7 +19,7 @@ class TSPSolver():
                 if goal_j == goal_i:
                     csGraph[i,j] = 0
                     break
-                _, _, length = self.planner.solve(goal_i, goal_j, getPathLength=True, solveTime = 1)
+                _, _, length = self.planner.solve(goal_i, goal_j, getPathLength=True, solveTime = 10)
                 csGraph[i, j] = length
                 j += 1
             j = 0
@@ -27,7 +27,7 @@ class TSPSolver():
         csGraph = csGraph + csGraph.T
         print(f"CS Graph:\n{csGraph}\n\n\n")
         print("Solving TSP")
-        permutation, self.distance = solve_tsp_record_to_record(csGraph, max_iterations = 50)
+        permutation, self.distance = solve_tsp_dynamic_programming(csGraph)
         print("TSP Solutions: ", permutation)
         self.goalList = [self.goalList[i] for i in permutation]
         self.goalList.append(self.goalList.pop(0))

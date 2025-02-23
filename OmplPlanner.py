@@ -114,7 +114,7 @@ class OmplPlanner():
             goal_y = goal[1] + 1.0 * math.sin(goal[3])
 
             c_x, c_y, c_z = goal_x, goal_y, goal[2]
-            width, depth, height = 0.8, 0.8, 0.65
+            width, depth, height = 0.9, 0.9, 0.65
 
             # Compute half-extents
             half_w = width / 2.0
@@ -168,8 +168,9 @@ class OmplPlanner():
     def isTourDone(self):
         if self.totalPoints == 0:
             return True
-
-    def solve(self, start_position, goal_position, getPathLength = False, solveTime = 20):
+    def is_path_valid(self) -> bool:
+        return True
+    def solve(self, start_position, goal_position, getPathLength = False, solveTime = 100):
         space = ob.SE3StateSpace()
         bounds = ob.RealVectorBounds(3)
         bounds.setLow(0, -15)
@@ -206,13 +207,22 @@ class OmplPlanner():
         pdef = ss.getProblemDefinition()
         ss.setStartAndGoalStates(start_state, goal_state)
         
-        planner = og.RRTstar(ss.getSpaceInformation())
+        planner = og.TRRT(ss.getSpaceInformation())
+        planner.setCostThreshold(0.1)
+        planner.setGoalBias(0.1)
         ss.setPlanner(planner)
+        solutionsWindow = 50
+        epsilon = 1e-5
+        ccptc = ob.CostConvergenceTerminationCondition(ss.getProblemDefinition(),
+                                                       solutionsWindow, epsilon)
+        # plannerTerminationCondition = ob.PlannerTerminationCondition(lambda path: self.is_path_valid(path))
+        # plannerTerminationCondition = ob.PlannerTerminationCondition(lambda: self.is_path_valid())
         # Solve within 5 seconds
         if ss.solve(solveTime):
-            ss.simplifySolution(10.0)  # Optional: Simplify the path
             path = ss.getSolutionPath()
-            path.interpolate(25)  # Generate 100 waypoints
+
+            ss.simplifySolution(ccptc)  # Optional: Simplify the path
+            path.interpolate(50)  # Generate 100 waypoints
             navPath = self.path_to_navPath(path)
             if getPathLength:
                 return navPath, path.printAsMatrix(), path.length()
