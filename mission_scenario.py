@@ -43,7 +43,7 @@ from mission_camera import DroneMotionRef
 from OmplPlanner import OmplPlanner
 from as2_python_api.drone_interface import DroneInterface
 import rclpy
-from scenarioHelpers import extractGoalsAndObstacles, getStartPose, read_scenario
+from scenarioHelpers import extractGoalsAndObstacles, getStartPose, read_scenario, read_solution, write_solution
 TAKE_OFF_HEIGHT = 1.0  # Height in meters
 TAKE_OFF_SPEED = 1.0  # Max speed in m/s
 SLEEP_TIME = 3.5  # Sleep time between behaviors in seconds
@@ -90,8 +90,15 @@ def drone_run(drone_interface: DroneInterface, timing: dict) -> bool:
     goalsPoints, obstacles = extractGoalsAndObstacles(scenario)
     startPose = getStartPose(scenario) 
     omplPlanner = OmplPlanner(goalsPoints, obstacles)
-    tspSolver = TSPSolver(omplPlanner.goalPoints,omplPlanner, startPose)
-    tspList = tspSolver.getTSPPath()
+    solution_path = read_solution(args.scenario)
+    if solution_path is not None:
+        print(f"Previous solution found, reading from: {solution_path}")
+        tspList = solution_path 
+    else:
+        print("No solution found, please hold caller...")
+        tspSolver = TSPSolver(omplPlanner.goalPoints,omplPlanner, startPose)
+        tspList = tspSolver.getTSPPath()
+        write_solution(args.scenario, tspList)
     thread = Thread(target=omplPlanner.solveAll, args=(drone_interface.position, tspList,))
     thread.start()
     started = False

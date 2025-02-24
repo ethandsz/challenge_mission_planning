@@ -37,6 +37,7 @@ def plotMap(goalPoints, obstacles):
 
 
     ax.legend()
+    ax.set_title(f"Trajectory For Scenario {args.scenario[-6]}")
     ax.set_xlim(-10, 10)
     ax.set_ylim(-10, 10)
     ax.set_zlim(0, 5)

@@ -2,3 +2,4 @@ rosbags/*
 .vscode/*
 log*
 config_sim/world/*
+/__pycache__

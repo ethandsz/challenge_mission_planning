@@ -1,4 +1,4 @@
-
+import ast
 import yaml
 
 def extractGoalsAndObstacles(scenario: dict):
@@ -34,3 +34,23 @@ def getStartPose(scenario: dict):
     return (start_pose)
 
 
+def read_solution(file_path):
+    file_path = file_path[:-5]
+    solution_path = "solutions/" + file_path + ".txt"
+    print(solution_path)
+    try:
+        with open(solution_path, 'r') as file:
+            solution = file.read()
+            print("Solution is: ", solution)
+            solution = ast.literal_eval(solution)
+            map(int, solution)
+            return solution
+    except:
+        return None
+
+def write_solution(file_path, permutation):
+    file_path = file_path[:-5]
+    solution_path = "solutions/" + file_path + ".txt"
+    f = open(solution_path, "w")
+    f.write(str(permutation))
+    f.close()
