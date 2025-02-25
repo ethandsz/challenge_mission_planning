@@ -27,7 +27,7 @@ class OmplPlanner():
             goal_y = goal[1] + 1.0 * math.sin(goal[3])
 
             c_x, c_y, c_z = goal_x, goal_y, goal[2]
-            width, depth, height = 0.05, 0.5, 0.5
+            width, depth, height = 0.05, 0.5, 0.25
 
             # Compute half-extents
             half_w = width / 2.0
@@ -86,7 +86,7 @@ class OmplPlanner():
 
 # Add each corner to the world config
             for i, (x, y, z) in enumerate(global_corners_3d):
-                goal_corner = [0.6, 0.2, 0.6, x, y, z]
+                goal_corner = [0.9, 0.4, 0.9, x, y, z]
                 goal_corners.append(goal_corner)
 
         for goal_corner in goal_corners:
@@ -261,12 +261,14 @@ class OmplPlanner():
         for goal in goalPoints:
             reached_goal = False
             replans = 0
+            solveTime = 5
             while not reached_goal:
                 simplify_path = True
                 if replans > 1:
                     simplify_path = False
+                    solveTime = 30
                     print("No path simplification, replans are over 5")
-                navpath, _ = self.solve(start_position, goal, solveTime=5, simplify_path=simplify_path)
+                navpath, _ = self.solve(start_position, goal, solveTime=solveTime, simplify_path=simplify_path)
                 last_pose = navpath.poses[-1]
                 last_x = last_pose.pose.position.x 
                 last_y = last_pose.pose.position.y 
@@ -326,9 +328,9 @@ class OmplPlanner():
         pdef = ss.getProblemDefinition()
         ss.setStartAndGoalStates(start_state, goal_state)
         
-        planner = og.TRRT(ss.getSpaceInformation())
-        planner.setCostThreshold(0.1)
-        planner.setGoalBias(0.1)
+        planner = og.RRTConnect(ss.getSpaceInformation())
+        # planner.setCostThreshold(0.1)
+        # planner.setGoalBias(0.1)
         ss.setPlanner(planner)
         solutionsWindow = 50
         epsilon = 1e-5

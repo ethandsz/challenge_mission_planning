@@ -155,7 +155,7 @@ def write_world_config(scenario, model_type, world_name, output_folder, world_fi
 #         goal_y = goal[1] + 1.0 * math.sin(goal[3])
 #
 #         c_x, c_y, c_z = goal_x, goal_y, goal[2]
-#         width, depth, height = 0.05, 0.5, 0.5
+#         width, depth, height = 0.05, 0.5, 0.25
 #         # width, depth, height = 0.2, 0.2, 0.2
 #
 #         # Compute half-extents
@@ -240,7 +240,7 @@ def write_world_config(scenario, model_type, world_name, output_folder, world_fi
 #             })
 #             generate_cuboid_model(
 #                 os.path.join(output_folder, "models"), model_name, 
-#                 0.6, 0.6, 0.2
+#                 0.6, 0.6, 0.35
 #             )
     with open(os.path.join(output_folder, world_file_name), 'w') as file:
         yaml.dump(world_config, file)
