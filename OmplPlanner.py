@@ -331,8 +331,10 @@ class OmplPlanner():
         planner = og.RRTConnect(ss.getSpaceInformation())
         # planner.setCostThreshold(0.1)
         # planner.setGoalBias(0.1)
+        planner.setRange(500.0)
+
         ss.setPlanner(planner)
-        solutionsWindow = 50
+        solutionsWindow = 5000
         epsilon = 1e-5
         ccptc = ob.CostConvergenceTerminationCondition(ss.getProblemDefinition(),
                                                        solutionsWindow, epsilon)
@@ -343,7 +345,7 @@ class OmplPlanner():
             path = ss.getSolutionPath()
             if simplify_path:
                 ss.simplifySolution(ccptc)  # Optional: Simplify the path
-            path.interpolate(int(path.length()*1.5))  # Generate 100 waypoints
+            path.interpolate(int(path.length()*1.5))
             navPath = self.path_to_navPath(path)
             if getPathLength:
                 return navPath, path.printAsMatrix(), path.length()
