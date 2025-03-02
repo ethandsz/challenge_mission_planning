@@ -9,7 +9,7 @@ import math
 from queue import Queue
 
 class OmplPlanner():
-    def __init__(self, goalPoints, obstacles):
+    def __init__(self, goalPoints, obstacles, includeGoalsAsObstacles = False):
         self.nav_path = Path()
         self.ompl_path = None 
         self.obstacleBounds = np.empty((0,6))
@@ -18,107 +18,108 @@ class OmplPlanner():
         self.totalPoints = len(self.goalPoints) + 1
         self.navPathQueue = Queue(maxsize=self.totalPoints) #add one for back to start
         print("Total Points to visit: ", self.totalPoints)
-        self.createBoundsAroundGoalsAndObstacles()
+        self.createBoundsAroundGoalsAndObstacles(includeGoalsAsObstacles = includeGoalsAsObstacles)
 
-    def createBoundsAroundGoalsAndObstacles(self, margin = 0.5, margin_corner = 0.1):
+    def createBoundsAroundGoalsAndObstacles(self, margin = 0.5, includeGoalsAsObstacles = False):
         goal_corners = []
-        for goal in self.goalPoints:
-            goal_x = goal[0] + 1.0 * math.cos(goal[3])
-            goal_y = goal[1] + 1.0 * math.sin(goal[3])
+        if includeGoalsAsObstacles:
+            for goal in self.goalPoints:
+                goal_x = goal[0] + 1.0 * math.cos(goal[3])
+                goal_y = goal[1] + 1.0 * math.sin(goal[3])
 
-            c_x, c_y, c_z = goal_x, goal_y, goal[2]
-            width, depth, height = 0.05, 0.5, 0.25
+                c_x, c_y, c_z = goal_x, goal_y, goal[2]
+                width, depth, height = 0.05, 0.5, 0.25
 
-            # Compute half-extents
-            half_w = width / 2.0
-            half_d = depth / 2.0
-            half_h = height / 2.0
+                # Compute half-extents
+                half_w = width / 2.0
+                half_d = depth / 2.0
+                half_h = height / 2.0
 
-            # Define the four corners in the obstacle's local (unrotated) frame
-            local_corners = np.array([
-                [ half_w,  half_d],
-                [ half_w, -half_d],
-                [-half_w,  half_d],
-                [-half_w, -half_d]
-            ])
-            yaw = goal[3]
-            # Define the rotation matrix for yaw
-            R = np.array([
-                [np.cos(yaw), -np.sin(yaw)],
-                [np.sin(yaw),  np.cos(yaw)]
-            ])
+                # Define the four corners in the obstacle's local (unrotated) frame
+                local_corners = np.array([
+                    [ half_w,  half_d],
+                    [ half_w, -half_d],
+                    [-half_w,  half_d],
+                    [-half_w, -half_d]
+                ])
+                yaw = goal[3]
+                # Define the rotation matrix for yaw
+                R = np.array([
+                    [np.cos(yaw), -np.sin(yaw)],
+                    [np.sin(yaw),  np.cos(yaw)]
+                ])
 
-            # Rotate local corners and shift by the center
-            global_corners = np.dot(local_corners, R.T)
-            global_corners[:, 0] += c_x
-            global_corners[:, 1] += c_y
+                # Rotate local corners and shift by the center
+                global_corners = np.dot(local_corners, R.T)
+                global_corners[:, 0] += c_x
+                global_corners[:, 1] += c_y
 
-            # Determine the axis-aligned bounds in x and y
-            x_min = np.min(global_corners[:, 0])
-            x_max = np.max(global_corners[:, 0])
-            y_min = np.min(global_corners[:, 1])
-            y_max = np.max(global_corners[:, 1])
+                # Determine the axis-aligned bounds in x and y
+                x_min = np.min(global_corners[:, 0])
+                x_max = np.max(global_corners[:, 0])
+                y_min = np.min(global_corners[:, 1])
+                y_max = np.max(global_corners[:, 1])
 
-            # For z, rotation doesn't affect the bounds.
-            z_min = c_z - half_h
-            z_max = c_z + half_h
+                # For z, rotation doesn't affect the bounds.
+                z_min = c_z - half_h
+                z_max = c_z + half_h
 
 # Define all eight corners in the local (unrotated) frame
-            local_corners_3d = np.array([
-                [ half_w,  half_d,  half_h],
-                [ half_w, -half_d,  half_h],
-                # [-half_w,  half_d,  half_h],
-                # [-half_w, -half_d,  half_h],
-                [ half_w,  half_d, -half_h],
-                [ half_w, -half_d, -half_h],
-                # [-half_w,  half_d, -half_h],
-                # [-half_w, -half_d, -half_h]
-            ])
+                local_corners_3d = np.array([
+                    [ half_w,  half_d,  half_h],
+                    [ half_w, -half_d,  half_h],
+                    # [-half_w,  half_d,  half_h],
+                    # [-half_w, -half_d,  half_h],
+                    [ half_w,  half_d, -half_h],
+                    [ half_w, -half_d, -half_h],
+                    # [-half_w,  half_d, -half_h],
+                    # [-half_w, -half_d, -half_h]
+                ])
 
 # Apply yaw rotation to x and y
-            global_corners_3d = np.dot(local_corners_3d[:, :2], R.T)
-            global_corners_3d = np.hstack([global_corners_3d, local_corners_3d[:, 2:]])  # Keep z unchanged
+                global_corners_3d = np.dot(local_corners_3d[:, :2], R.T)
+                global_corners_3d = np.hstack([global_corners_3d, local_corners_3d[:, 2:]])  # Keep z unchanged
 
 # Shift by the center position
-            global_corners_3d[:, 0] += c_x
-            global_corners_3d[:, 1] += c_y
-            global_corners_3d[:, 2] += c_z
+                global_corners_3d[:, 0] += c_x
+                global_corners_3d[:, 1] += c_y
+                global_corners_3d[:, 2] += c_z
 
 # Add each corner to the world config
-            for i, (x, y, z) in enumerate(global_corners_3d):
-                goal_corner = [0.9, 0.4, 0.9, x, y, z]
-                goal_corners.append(goal_corner)
+                for i, (x, y, z) in enumerate(global_corners_3d):
+                    goal_corner = [0.9, 0.4, 0.9, x, y, z]
+                    goal_corners.append(goal_corner)
 
-        for goal_corner in goal_corners:
-            depth = goal_corner[0]
-            height = goal_corner[1]
-            width = goal_corner[2]
-            obs_x = goal_corner[3]
-            obs_y = goal_corner[4]
-            obs_z = goal_corner[5]
+            for goal_corner in goal_corners:
+                depth = goal_corner[0]
+                height = goal_corner[1]
+                width = goal_corner[2]
+                obs_x = goal_corner[3]
+                obs_y = goal_corner[4]
+                obs_z = goal_corner[5]
 
-            z_low = obs_z - (height/2)
-            z_high = obs_z + (height/2)
+                z_low = obs_z - (height/2)
+                z_high = obs_z + (height/2)
 
-            x_low = obs_x - (width/2)
-            x_high = obs_x + (width/2)
+                x_low = obs_x - (width/2)
+                x_high = obs_x + (width/2)
 
-            y_low = obs_y - (depth/2)
-            y_high = obs_y + (depth/2)
+                y_low = obs_y - (depth/2)
+                y_high = obs_y + (depth/2)
 
-            # Inflate the obstacle boundaries by the margin
-            x_low_inflated = x_low #- margin_corner
-            x_high_inflated = x_high #+ margin_corner
-            y_low_inflated = y_low# - margin_corner
-            y_high_inflated = y_high #+ margin_corner
-            z_low_inflated = z_low #- margin_corner
-            z_high_inflated = z_high #+ margin_corner
-            print("Appending goal corner: ", [[x_low_inflated, x_high_inflated, y_low_inflated, y_high_inflated, z_low_inflated, z_high_inflated]])
-            self.obstacleBounds = np.append(
-                self.obstacleBounds,
-                [[x_low_inflated, x_high_inflated, y_low_inflated, y_high_inflated, z_low_inflated, z_high_inflated]],
-                axis=0
-            )
+                # Inflate the obstacle boundaries by the margin
+                x_low_inflated = x_low #- margin_corner
+                x_high_inflated = x_high #+ margin_corner
+                y_low_inflated = y_low# - margin_corner
+                y_high_inflated = y_high #+ margin_corner
+                z_low_inflated = z_low #- margin_corner
+                z_high_inflated = z_high #+ margin_corner
+                print("Appending goal corner: ", [[x_low_inflated, x_high_inflated, y_low_inflated, y_high_inflated, z_low_inflated, z_high_inflated]])
+                self.obstacleBounds = np.append(
+                    self.obstacleBounds,
+                    [[x_low_inflated, x_high_inflated, y_low_inflated, y_high_inflated, z_low_inflated, z_high_inflated]],
+                    axis=0
+                )
 
 
         for obstacle in self.obstacles:

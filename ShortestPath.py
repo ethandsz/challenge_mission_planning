@@ -2,6 +2,7 @@ import numpy as np
 from python_tsp.exact import solve_tsp_dynamic_programming
 from python_tsp.heuristics import solve_tsp_lin_kernighan
 from python_tsp.heuristics import solve_tsp_record_to_record
+from python_tsp.heuristics import solve_tsp_local_search
 from python_tsp.exact import solve_tsp_brute_force
 import time
 class TSPSolver():
@@ -30,9 +31,10 @@ class TSPSolver():
         csGraph = csGraph + csGraph.T
         print(f"CS Graph:\n{csGraph}\n\n\n")
         print("Solving TSP")
-        permutation, self.distance = solve_tsp_brute_force(csGraph)
+        permutation, self.distance = solve_tsp_local_search(csGraph)
         print("TSP Solutions: ", permutation)
         print("TSP SOLVE TIME: ", time.time() - start_time)
+        print("TSP Distance: ", self.distance)
         self.goalList = [self.goalList[i] for i in permutation]
         self.goalList.append(self.goalList.pop(0))
 
