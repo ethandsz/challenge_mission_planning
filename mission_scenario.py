@@ -46,7 +46,7 @@ import rclpy
 from scenarioHelpers import extractGoalsAndObstacles, getStartPose, read_scenario, read_solution, write_solution
 TAKE_OFF_HEIGHT = 1.0  # Height in meters
 TAKE_OFF_SPEED = 1.0  # Max speed in m/s
-SLEEP_TIME = 3.5  # Sleep time between behaviors in seconds
+SLEEP_TIME = 1.0  # Sleep time between behaviors in seconds
 SPEED = 1.0  # Max speed in m/s
 LAND_SPEED = 0.5  # Max speed in m/s
 

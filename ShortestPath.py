@@ -39,4 +39,4 @@ class TSPSolver():
         self.goalList.append(self.goalList.pop(0))
 
     def getTSPPath(self):
-        return self.goalList
+        return self.goalList 
